@@ -1,0 +1,11 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: twitter-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: twitter
+      MYSQL_DATABASE: twitter_rdb
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+
