@@ -1,4 +1,3 @@
-CREATE DATABASE IF NOT EXISTS twitter_rdb;
 USE twitter_rdb;
 
 DROP TABLE IF EXISTS TWEET;
