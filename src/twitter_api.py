@@ -2,6 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional
 import mysql.connector
+import random
 
 
 @dataclass(frozen=True)
@@ -28,8 +29,8 @@ class TwitterMySQLAPI:
     """
     MySQL-backed implementation of the Twitter API.
 
-    The timing / benchmark code must interact ONLY with this API.
-    The underlying database implementation is hidden from callers.
+    Benchmark code must interact ONLY with this API.
+    The underlying database implementation is hidden.
     """
 
     def __init__(
@@ -41,7 +42,7 @@ class TwitterMySQLAPI:
         port: int = 3306,
     ) -> None:
         """
-        Initialize the API and establish a database connection.
+        Initialize the API and open a persistent database connection.
 
         Parameters:
             host (str): MySQL host name.
@@ -65,7 +66,7 @@ class TwitterMySQLAPI:
 
     def post_tweet(self, user_id: int, tweet_text: str) -> int:
         """
-        Post a single tweet.
+        Insert a single tweet into the database.
 
         Parameters:
             user_id (int): ID of the user posting the tweet.
@@ -85,15 +86,11 @@ class TwitterMySQLAPI:
         """
         Retrieve the home timeline for a user.
 
-        The home timeline consists of the 10 most recent tweets
-        from users that the given user follows.
-
         Parameters:
             user_id (int): ID of the user requesting the timeline.
 
         Returns:
-            List[Tweet]: A list of up to 10 Tweet objects ordered
-            from newest to oldest.
+            List[Tweet]: Up to 10 most recent tweets from followed users.
         """
         self.cur.execute(
             """
@@ -111,24 +108,19 @@ class TwitterMySQLAPI:
 
     def get_random_follower_id(self) -> Optional[int]:
         """
-        Select a random follower ID from the FOLLOWS table
-        without using ORDER BY RAND().
+        Select a random follower ID without using ORDER BY RAND().
 
         Returns:
             Optional[int]: A follower_id if one exists, otherwise None.
         """
-        # Get min and max follower_id
         self.cur.execute("SELECT MIN(follower_id), MAX(follower_id) FROM FOLLOWS")
         row = self.cur.fetchone()
         if not row or row[0] is None:
             return None
 
         min_id, max_id = row
-
-        import random
         rand_id = random.randint(min_id, max_id)
 
-        # Find the next existing follower_id >= rand_id
         self.cur.execute(
             """
             SELECT follower_id
@@ -142,14 +134,13 @@ class TwitterMySQLAPI:
         row = self.cur.fetchone()
         return int(row[0]) if row else None
 
-
     def load_follows_csv(self, csv_path: str, has_header: bool = True) -> int:
         """
-        Load follow relationships from a CSV file into the database.
+        Load follow relationships from a CSV file.
 
         Parameters:
             csv_path (str): Path to the CSV file.
-            has_header (bool): Whether the first row is a header.
+            has_header (bool): Whether the CSV has a header row.
 
         Returns:
             int: Number of rows inserted (duplicates ignored).
@@ -177,9 +168,6 @@ class TwitterMySQLAPI:
     def close(self) -> None:
         """
         Close the database cursor and connection.
-
-        Parameters:
-            None
 
         Returns:
             None
