@@ -110,23 +110,38 @@ class TwitterMySQLAPI:
         return [Tweet(*row) for row in rows]
 
     def get_random_follower_id(self) -> Optional[int]:
+    """
+    Select a random follower ID from the FOLLOWS table
+    without using ORDER BY RAND().
+
+    Returns:
+        Optional[int]: A follower_id if one exists, otherwise None.
+    """
+    # Get min and max follower_id once per call (cheap with index)
+    self.cur.execute("SELECT MIN(follower_id), MAX(follower_id) FROM FOLLOWS")
+    row = self.cur.fetchone()
+    if not row or row[0] is None:
+        return None
+
+    min_id, max_id = row
+
+    import random
+    rand_id = random.randint(min_id, max_id)
+
+    # Find the next existing follower_id >= rand_id
+    self.cur.execute(
         """
-        Select a random follower ID from the FOLLOWS table.
+        SELECT follower_id
+        FROM FOLLOWS
+        WHERE follower_id >= %s
+        ORDER BY follower_id
+        LIMIT 1
+        """,
+        (rand_id,),
+    )
+    row = self.cur.fetchone()
+    return int(row[0]) if row else None
 
-        Used by the benchmark to generate realistic API calls.
-
-        Parameters:
-            None
-
-        Returns:
-            Optional[int]: A follower_id if one exists,
-            otherwise None.
-        """
-        self.cur.execute(
-            "SELECT follower_id FROM FOLLOWS ORDER BY RAND() LIMIT 1"
-        )
-        row = self.cur.fetchone()
-        return int(row[0]) if row else None
 
     def load_follows_csv(self, csv_path: str, has_header: bool = True) -> int:
         """
